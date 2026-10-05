@@ -1,2 +1,8 @@
-# CodeAlpha-Task1-Language-Translator
-🌐 Language AI Translator | CodeAlpha AI Internship Task 1 | Real-time translation using Google Translate API with Text-to-Speech, Auto Language Detection, 100+ languages, and a beautiful Streamlit web UI. Built with Python 3.13.
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.

@@ -1,0 +1,4 @@
+{
+  "test_translator.py::test_auto_detect_french": true,
+  "test_translator.py::test_basic_translation_en_to_es": true
+}
