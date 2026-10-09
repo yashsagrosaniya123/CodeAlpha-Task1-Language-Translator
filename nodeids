@@ -1,8 +1,0 @@
-[
-  "test_translator.py::test_auto_detect_french",
-  "test_translator.py::test_basic_translation_en_to_es",
-  "test_translator.py::test_empty_string_handling",
-  "test_translator.py::test_language_mappings",
-  "test_translator.py::test_same_source_and_target",
-  "test_translator.py::test_translation_metrics"
-]
