@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Language AI Translator",
+    page_title="YashLingua Translator | Free AI Language Translator",
     page_icon="🌐",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1392,7 +1392,7 @@ if st.session_state.show_login:
         st.markdown("""
         <div class='welcome-brand welcome-brand-left'>
             <span class='welcome-brand-mark' aria-hidden='true'>文</span>
-            <span>Language AI <span style='color:#d4d9e3;font-weight:500;'>· Translator</span></span>
+            <span>YashLingua <span style='color:#d4d9e3;font-weight:500;'>· Translator</span></span>
         </div>
         <div class='welcome-eyebrow'>A workspace for every voice</div>
         <div class='welcome-title'>Words connect<br>worlds.</div>
@@ -1429,7 +1429,7 @@ with st.sidebar:
     <div class='sidebar-brand'>
         <div class='sidebar-brand-mark' aria-hidden='true'>文</div>
         <div class='sidebar-brand-copy'>
-            <div class='sidebar-brand-title'>Language AI</div>
+            <div class='sidebar-brand-title'>YashLingua</div>
             <div class='sidebar-brand-subtitle'>TRANSLATOR</div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-# 🌐 Language AI Translator
+# 🌐 YashLingua Translator
 
 <div align="center">
 
@@ -17,7 +17,7 @@
 
 ## 📌 Overview
 
-**Language AI Translator** is a full-featured language translation web application built as **Task 1** of the **CodeAlpha AI Internship**. It translates text across 100+ languages with a Streamlit interface, audio playback, speech downloads, and spelling and grammar suggestions.
+**YashLingua Translator** is a full-featured language translation web application built as **Task 1** of the **CodeAlpha AI Internship**. It translates text across 100+ languages with a Streamlit interface, audio playback, speech downloads, and spelling and grammar suggestions.
 
 Translation uses Google's **unofficial, undocumented web translation endpoint** as the primary provider and MyMemory as a fallback. Text correction uses LanguageTool's online API only when you click **Auto-correct**; the text you submit is sent to that service. These public services may impose limits or change without notice. The welcome screen is a guest entry screen, not an authentication system.
 
