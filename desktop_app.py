@@ -15,6 +15,7 @@ Features:
 
 import threading
 import time
+import logging
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
@@ -26,6 +27,8 @@ except ImportError:
     HAS_TTS = False
 
 from translator_engine import TranslationEngine, SUPPORTED_LANGUAGES, CODE_TO_LANGUAGE
+
+logger = logging.getLogger(__name__)
 
 # Set CustomTkinter appearance
 ctk.set_appearance_mode("Dark")
@@ -65,7 +68,7 @@ class LanguageTranslatorApp(ctk.CTk):
 
         sub_label = ctk.CTkLabel(
             header_frame,
-            text="CodeAlpha Artificial Intelligence Internship • Task 1 (Google Translate API + TTS)",
+            text="CodeAlpha Artificial Intelligence Internship • Task 1 (online translation + TTS)",
             font=ctk.CTkFont(size=12),
             text_color="gray"
         )
@@ -284,8 +287,11 @@ class LanguageTranslatorApp(ctk.CTk):
                     tts_engine = pyttsx3.init()
                     tts_engine.say(text)
                     tts_engine.runAndWait()
-                except Exception as e:
-                    print("TTS error:", e)
+                except Exception as exc:
+                    logger.warning("Desktop speech generation failed (%s).", type(exc).__name__)
+                    self.after(0, lambda: self.status_label.configure(
+                        text="Speech generation is temporarily unavailable."
+                    ))
 
         thread = threading.Thread(target=run_speech, daemon=True)
         thread.start()
@@ -300,7 +306,7 @@ class LanguageTranslatorApp(ctk.CTk):
         tgt_name = self.tgt_combo.get()
 
         self.translate_btn.configure(state="disabled", text="Translating...")
-        self.status_label.configure(text="Connecting to Google Translate API...")
+        self.status_label.configure(text="Connecting to translation services...")
 
         def worker():
             t0 = time.time()
@@ -329,8 +335,9 @@ class LanguageTranslatorApp(ctk.CTk):
                 text=f"✓ Translated successfully from {detected} to {result['target_name']} in {elapsed_ms}ms"
             )
         else:
-            self.status_label.configure(text=f"❌ Translation failed: {result.get('error')}")
-            messagebox.showerror("Translation Error", result.get("error", "Unknown error"))
+            error = result.get("error", "Translation is temporarily unavailable.")
+            self.status_label.configure(text=f"❌ {error}")
+            messagebox.showerror("Translation Error", error)
 
 
 if __name__ == "__main__":

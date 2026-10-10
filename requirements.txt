@@ -1,8 +1,4 @@
-streamlit>=1.30.0
-deep-translator>=1.11.0
-gTTS>=2.5.0
-edge-tts>=7.0.0
-customtkinter>=5.2.0
-pyttsx3>=2.90
-httpx>=0.25.0
-pytest>=8.0.0
+streamlit==1.65.0
+httpx==0.28.1
+gTTS==2.5.4
+edge-tts==7.2.8

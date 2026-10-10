@@ -3,7 +3,7 @@ CodeAlpha Artificial Intelligence Internship - Task 1: Language Translation Tool
 Core Translation Engine
 -------------------------------------------------------------------------------
 Features:
-- Google Translate API integration (Free & Reliable GTX Endpoint)
+- Unofficial Google Translate web endpoint integration
 - Fallback to MyMemory Translation API
 - Automatic Source Language Detection
 - 100+ Supported Languages
@@ -146,11 +146,13 @@ CODE_TO_LANGUAGE = {code: name for name, code in SUPPORTED_LANGUAGES.items() if 
 
 class TranslationEngine:
     """
-    Robust translation engine interfacing with Google Translate API
+    Translation engine using the unofficial Google Translate web endpoint
     and fallback providers.
     """
 
     def __init__(self, timeout: float = 10.0):
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than zero")
         self.timeout = timeout
         self.headers = {
             "User-Agent": (
@@ -173,7 +175,7 @@ class TranslationEngine:
                 return response.read().decode("utf-8")
 
     def _translate_google_chunk(self, text: str, src_code: str, tgt_code: str) -> Dict[str, Any]:
-        """Translates a single chunk of text via Google Translate API."""
+        """Translate one chunk with Google's unofficial web endpoint."""
         encoded_query = urllib.parse.quote(text)
         clients = ["dict-chrome-ex", "gtx"]
         last_error = None
@@ -186,16 +188,23 @@ class TranslationEngine:
                 )
                 raw_response = self._fetch_url(url)
                 data = json.loads(raw_response)
-                
-                translated_segments = []
-                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
-                    for item in data[0]:
-                        if isinstance(item, list) and len(item) > 0 and item[0]:
-                            translated_segments.append(item[0])
-                
-                translated_text = "".join(translated_segments) if translated_segments else ""
+
+                if not isinstance(data, list) or not data or not isinstance(data[0], list):
+                    raise ValueError("Malformed Google translation response")
+
+                translated_segments = [
+                    item[0]
+                    for item in data[0]
+                    if isinstance(item, list) and item and isinstance(item[0], str)
+                ]
+                translated_text = "".join(translated_segments)
+                if not translated_text.strip():
+                    raise ValueError("Google translation response was empty")
+
                 detected_src = data[2] if len(data) > 2 and data[2] else src_code
-                
+                if not isinstance(detected_src, str):
+                    detected_src = src_code
+
                 return {
                     "translated_text": translated_text,
                     "detected_source": detected_src
@@ -204,7 +213,7 @@ class TranslationEngine:
                 last_error = e
                 continue
 
-        raise last_error
+        raise RuntimeError("Google translation provider failed") from last_error
 
     def _translate_mymemory_fallback(self, text: str, src_code: str, tgt_code: str) -> Dict[str, Any]:
         """Fallback translation via MyMemory API."""
@@ -214,12 +223,40 @@ class TranslationEngine:
         
         raw_response = self._fetch_url(url)
         data = json.loads(raw_response)
-        
-        translated_text = data.get("responseData", {}).get("translatedText", "")
+        if not isinstance(data, dict):
+            raise ValueError("Malformed MyMemory response")
+        if data.get("responseStatus") not in (None, 200, "200"):
+            raise ValueError("MyMemory returned an unsuccessful status")
+        response_data = data.get("responseData")
+        if not isinstance(response_data, dict):
+            raise ValueError("Malformed MyMemory translation data")
+        translated_text = response_data.get("translatedText")
+        if not isinstance(translated_text, str) or not translated_text.strip():
+            raise ValueError("MyMemory returned an empty translation")
         return {
             "translated_text": translated_text,
             "detected_source": actual_src
         }
+
+    @staticmethod
+    def _resolve_language_code(language: str, allow_auto: bool) -> str:
+        if not isinstance(language, str) or not language.strip():
+            raise ValueError("Unsupported language")
+
+        value = language.strip()
+        code = SUPPORTED_LANGUAGES.get(value)
+        if code is None:
+            code = next(
+                (
+                    supported_code
+                    for supported_code in SUPPORTED_LANGUAGES.values()
+                    if supported_code.lower() == value.lower()
+                ),
+                None,
+            )
+        if code is None or (code == "auto" and not allow_auto):
+            raise ValueError("Unsupported language")
+        return code
 
     def translate(
         self,
@@ -235,7 +272,7 @@ class TranslationEngine:
         :param target_lang: Language code (e.g. 'fr', 'hi', 'de') or display name ('French')
         :return: Dictionary containing translation results and metadata
         """
-        if not text or not text.strip():
+        if not isinstance(text, str) or not text.strip():
             return {
                 "success": False,
                 "error": "Input text cannot be empty.",
@@ -246,9 +283,19 @@ class TranslationEngine:
                 "detected_source": None
             }
 
-        # Resolve language names to codes if full names were passed
-        src_code = SUPPORTED_LANGUAGES.get(source_lang, source_lang).lower()
-        tgt_code = SUPPORTED_LANGUAGES.get(target_lang, target_lang).lower()
+        try:
+            src_code = self._resolve_language_code(source_lang, allow_auto=True)
+            tgt_code = self._resolve_language_code(target_lang, allow_auto=False)
+        except ValueError:
+            return {
+                "success": False,
+                "error": "Please choose a supported source and target language.",
+                "original_text": text,
+                "translated_text": "",
+                "source_language": source_lang,
+                "target_language": target_lang,
+                "detected_source": None,
+            }
 
         # If source and target are the same and not auto, return input directly
         if src_code != "auto" and src_code == tgt_code:
@@ -266,46 +313,46 @@ class TranslationEngine:
                 "char_count": len(text)
             }
 
-        # Handle long text by chunking if > 4000 characters
+        # Keep requests below provider limits while retaining separators.
         max_chunk_size = 4000
-        paragraphs = text.split("\n")
         chunks = []
-        current_chunk = ""
-
-        for para in paragraphs:
-            if len(current_chunk) + len(para) + 1 < max_chunk_size:
-                current_chunk += (para + "\n")
-            else:
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-                current_chunk = para + "\n"
-        if current_chunk:
-            chunks.append(current_chunk.strip())
+        start = 0
+        while start < len(text):
+            end = min(start + max_chunk_size, len(text))
+            if end < len(text):
+                boundary = max(text.rfind("\n", start, end), text.rfind(" ", start, end))
+                if boundary > start:
+                    end = boundary + 1
+            chunks.append(text[start:end])
+            start = end
 
         translated_chunks = []
         detected_lang = src_code
 
         for chunk in chunks:
-            if not chunk.strip():
-                translated_chunks.append("")
-                continue
             try:
-                # Primary translation: Google Translate API
                 result = self._translate_google_chunk(chunk, src_code, tgt_code)
                 translated_chunks.append(result["translated_text"])
                 if result.get("detected_source"):
                     detected_lang = result["detected_source"]
             except Exception as google_err:
-                logger.warning("Google API error: %s. Falling back to MyMemory...", google_err)
+                logger.warning(
+                    "Primary translation provider failed (%s); trying fallback.",
+                    type(google_err).__name__,
+                )
                 try:
                     result = self._translate_mymemory_fallback(chunk, src_code, tgt_code)
                     translated_chunks.append(result["translated_text"])
                     detected_lang = result.get("detected_source", src_code)
                 except Exception as fallback_err:
-                    logger.error("Both primary and fallback failed: %s", fallback_err)
+                    logger.error(
+                        "Both translation providers failed (primary=%s, fallback=%s).",
+                        type(google_err).__name__,
+                        type(fallback_err).__name__,
+                    )
                     return {
                         "success": False,
-                        "error": f"Translation failed: {str(fallback_err)}",
+                        "error": "Translation is temporarily unavailable. Please try again later.",
                         "original_text": text,
                         "translated_text": "",
                         "source_language": src_code,
@@ -313,7 +360,7 @@ class TranslationEngine:
                         "detected_source": None
                     }
 
-        final_translated_text = "\n".join(translated_chunks)
+        final_translated_text = "".join(translated_chunks)
         detected_name = CODE_TO_LANGUAGE.get(detected_lang, detected_lang.upper())
         target_name = CODE_TO_LANGUAGE.get(tgt_code, tgt_code.upper())
 
